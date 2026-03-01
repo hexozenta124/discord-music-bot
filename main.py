@@ -3,10 +3,13 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import yt_dlp
 import asyncio
+import os   # ✅ ADD THIS
 
-from config import TOKEN
 from player import MusicPlayer
 from ui import now_playing_embed, MusicControls
+
+# ✅ GET TOKEN FROM RAILWAY VARIABLES
+TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -30,8 +33,6 @@ def get_player(guild):
     return players[guild.id]
 
 
-# ================= AUTO UPDATE EMBED =================
-
 @tasks.loop(seconds=5)
 async def update_embeds():
     for guild_id, player in players.items():
@@ -50,8 +51,6 @@ async def update_embeds():
                 pass
 
 
-# ================= READY =================
-
 @bot.event
 async def on_ready():
     await tree.sync()
@@ -61,8 +60,6 @@ async def on_ready():
 
     print(f"Logged in as {bot.user}")
 
-
-# ================= PLAY =================
 
 @tree.command(name="play", description="Play a song")
 async def play(interaction: discord.Interaction, query: str):
@@ -101,35 +98,6 @@ async def play(interaction: discord.Interaction, query: str):
     now_playing_messages[interaction.guild.id] = message
 
 
-# ================= ADD NEXT (NEW COMMAND) =================
-
-@tree.command(name="addnext", description="Add song to queue")
-async def addnext(interaction: discord.Interaction, query: str):
-    await interaction.response.defer()
-
-    if not interaction.user.voice:
-        await interaction.followup.send("Join a voice channel first.")
-        return
-
-    player = get_player(interaction.guild)
-
-    info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
-
-    song = {
-        "title": info["title"],
-        "url": info["url"],
-        "duration": info.get("duration", 0)
-    }
-
-    await player.add_song(song, interaction.followup)
-
-    await interaction.followup.send(
-        f"✅ **Added to Queue:** {song['title']}"
-    )
-
-
-# ================= PAUSE =================
-
 @tree.command(name="pause", description="Pause music")
 async def pause(interaction: discord.Interaction):
     player = get_player(interaction.guild)
@@ -137,8 +105,6 @@ async def pause(interaction: discord.Interaction):
         player.voice.pause()
         await interaction.response.send_message("⏸ Paused")
 
-
-# ================= RESUME =================
 
 @tree.command(name="resume", description="Resume music")
 async def resume(interaction: discord.Interaction):
@@ -148,8 +114,6 @@ async def resume(interaction: discord.Interaction):
         await interaction.response.send_message("▶ Resumed")
 
 
-# ================= SKIP =================
-
 @tree.command(name="skip", description="Skip song")
 async def skip(interaction: discord.Interaction):
     player = get_player(interaction.guild)
@@ -157,8 +121,6 @@ async def skip(interaction: discord.Interaction):
         player.voice.stop()
         await interaction.response.send_message("⏭ Skipped")
 
-
-# ================= VOLUME =================
 
 @tree.command(name="volume", description="Set volume 1-100")
 async def volume(interaction: discord.Interaction, level: int):
@@ -173,8 +135,6 @@ async def volume(interaction: discord.Interaction, level: int):
         await interaction.response.send_message("Use 1-100 only.")
 
 
-# ================= 24/7 MODE =================
-
 @tree.command(name="247", description="Toggle 24/7 mode")
 async def twentyfourseven(interaction: discord.Interaction):
     player = get_player(interaction.guild)
@@ -185,5 +145,5 @@ async def twentyfourseven(interaction: discord.Interaction):
     await interaction.response.send_message(f"🔥 24/7 Mode: {status}")
 
 
-# 🚀 RUN BOT
+# ✅ RUN BOT USING ENV TOKEN
 bot.run(TOKEN)

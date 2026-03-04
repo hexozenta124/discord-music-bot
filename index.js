@@ -26,15 +26,117 @@ client.once('ready', () => {
 
 client.on('interactionCreate', async (interaction) => {
 
-    if (!interaction.isChatInputCommand() && !interaction.isButton()) return;
-
-    // ================= SLASH =================
     if (interaction.isChatInputCommand()) {
         try {
 
             if (interaction.commandName === "play") {
 
                 await interaction.deferReply();
+
+                const player = getPlayer(interaction.guild);
+                const query = interaction.options.getString("query");
+
+                const result = await play.search(query, { limit: 1 });
+
+                if (!result || !result.length)
+                    return await interaction.editReply("❌ No results found.");
+
+                const info = result[0];
+
+                if (!info.url)
+                    return await interaction.editReply("❌ Could not get video URL.");
+
+                const song = {
+                    title: info.title || "Unknown Title",
+                    url: info.url,
+                    duration: info.durationInSec || 0,
+                    thumbnail: info.thumbnails?.[0]?.url || null
+                };
+
+                if (!interaction.member.voice.channel)
+                    return await interaction.editReply("❌ Join a voice channel first.");
+
+                await player.connect(interaction.member.voice.channel);
+                await player.addSong(song);
+
+                if (!player.current)
+                    await player.playNext();
+
+                const { embed, row } = nowPlayingEmbed(player);
+                await interaction.editReply({ embeds: [embed], components: [row] });
+            }
+
+            else if (interaction.commandName === "pause") {
+                await interaction.deferReply();
+                const player = getPlayer(interaction.guild);
+                player.player.pause();
+                await interaction.editReply("⏸ Paused");
+            }
+
+            else if (interaction.commandName === "resume") {
+                await interaction.deferReply();
+                const player = getPlayer(interaction.guild);
+                player.player.unpause();
+                await interaction.editReply("▶ Resumed");
+            }
+
+            else if (interaction.commandName === "skip") {
+                await interaction.deferReply();
+                const player = getPlayer(interaction.guild);
+                player.player.stop();
+                await interaction.editReply("⏭ Skipped");
+            }
+
+        } catch (error) {
+            console.error("❌ Slash Command Error:", error);
+            try {
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply("❌ Something went wrong.");
+                }
+            } catch {}
+        }
+    }
+
+    else if (interaction.isButton()) {
+        try {
+
+            await interaction.deferUpdate();
+
+            const player = getPlayer(interaction.guild);
+
+            if (interaction.customId === "pause") {
+                if (player.player.state.status === "playing")
+                    player.player.pause();
+                else
+                    player.player.unpause();
+            }
+
+            else if (interaction.customId === "skip") {
+                player.player.stop();
+            }
+
+            else if (interaction.customId === "stop") {
+                if (player.connection) {
+                    player.connection.destroy();
+                    player.connection = null;
+                }
+            }
+
+            else if (interaction.customId === "volup") {
+                player.volume = Math.min(player.volume + 0.1, 1);
+            }
+
+            else if (interaction.customId === "voldown") {
+                player.volume = Math.max(player.volume - 0.1, 0);
+            }
+
+        } catch (err) {
+            console.error("❌ Button Error:", err);
+        }
+    }
+});
+
+client.login(TOKEN);                await interaction.deferReply();
 
                 const player = getPlayer(interaction.guild);
                 const query = interaction.options.getString("query");

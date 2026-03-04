@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, InteractionType } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const play = require('play-dl');
 const { TOKEN } = require('./config');
 const MusicPlayer = require('./player');
@@ -21,88 +21,121 @@ function getPlayer(guild) {
 }
 
 client.once('ready', async () => {
-    console.log(`Logged in as ${client.user.tag}`);
+    console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 client.on('interactionCreate', async (interaction) => {
 
+    // ✅ Handle Slash Commands
     if (interaction.isChatInputCommand()) {
 
-        const player = getPlayer(interaction.guild);
+        try {
+            const player = getPlayer(interaction.guild);
 
-        if (interaction.commandName === "play") {
+            // ================= PLAY =================
+            if (interaction.commandName === "play") {
 
-            await interaction.deferReply();
+                await interaction.deferReply(); // ✅ instant response
 
-            const query = interaction.options.getString("query");
+                const query = interaction.options.getString("query");
 
-            const result = await play.search(query, { limit: 1 });
-            if (!result.length) return interaction.editReply("No results.");
+                const result = await play.search(query, { limit: 1 });
+                if (!result.length)
+                    return await interaction.editReply("❌ No results found.");
 
-            const info = result[0];
+                const info = result[0];
 
-            const song = {
-                title: info.title,
-                url: info.url,
-                duration: info.durationInSec,
-                thumbnail: info.thumbnails[0]?.url
-            };
+                const song = {
+                    title: info.title,
+                    url: info.url,
+                    duration: info.durationInSec,
+                    thumbnail: info.thumbnails[0]?.url
+                };
 
-            await player.connect(interaction.member.voice.channel);
-            await player.addSong(song);
+                if (!interaction.member.voice.channel)
+                    return await interaction.editReply("❌ Join a voice channel first.");
 
-            if (!player.current)
-                await player.playNext();
+                await player.connect(interaction.member.voice.channel);
+                await player.addSong(song);
 
-            const { embed, row } = nowPlayingEmbed(player);
-            await interaction.editReply({ embeds: [embed], components: [row] });
-        }
+                if (!player.current)
+                    await player.playNext();
 
-        if (interaction.commandName === "pause") {
-            player.player.pause();
-            interaction.reply("⏸ Paused");
-        }
+                const { embed, row } = nowPlayingEmbed(player);
+                await interaction.editReply({ embeds: [embed], components: [row] });
+            }
 
-        if (interaction.commandName === "resume") {
-            player.player.unpause();
-            interaction.reply("▶ Resumed");
-        }
+            // ================= PAUSE =================
+            else if (interaction.commandName === "pause") {
 
-        if (interaction.commandName === "skip") {
-            player.player.stop();
-            interaction.reply("⏭ Skipped");
+                await interaction.deferReply();
+                player.player.pause();
+                await interaction.editReply("⏸ Paused");
+            }
+
+            // ================= RESUME =================
+            else if (interaction.commandName === "resume") {
+
+                await interaction.deferReply();
+                player.player.unpause();
+                await interaction.editReply("▶ Resumed");
+            }
+
+            // ================= SKIP =================
+            else if (interaction.commandName === "skip") {
+
+                await interaction.deferReply();
+                player.player.stop();
+                await interaction.editReply("⏭ Skipped");
+            }
+
+        } catch (error) {
+            console.error("❌ Slash Command Error:", error);
+
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply("❌ Something went wrong.");
+            } else {
+                await interaction.reply("❌ Something went wrong.");
+            }
         }
     }
 
+    // ✅ Handle Buttons
     if (interaction.isButton()) {
+
         const player = getPlayer(interaction.guild);
 
-        if (interaction.customId === "pause") {
-            if (player.player.state.status === "playing")
-                player.player.pause();
-            else
-                player.player.unpause();
-        }
-
-        if (interaction.customId === "skip")
-            player.player.stop();
-
-        if (interaction.customId === "stop") {
-            if (player.connection) {
-                player.connection.destroy();
-                player.connection = null;
+        try {
+            if (interaction.customId === "pause") {
+                if (player.player.state.status === "playing")
+                    player.player.pause();
+                else
+                    player.player.unpause();
             }
-        }
 
-        if (interaction.customId === "volup") {
-            player.volume = Math.min(player.volume + 0.1, 1);
-        }
+            if (interaction.customId === "skip")
+                player.player.stop();
 
-        if (interaction.customId === "voldown") {
-            player.volume = Math.max(player.volume - 0.1, 0);
-        }
+            if (interaction.customId === "stop") {
+                if (player.connection) {
+                    player.connection.destroy();
+                    player.connection = null;
+                }
+            }
 
-        await interaction.deferUpdate();
+            if (interaction.customId === "volup") {
+                player.volume = Math.min(player.volume + 0.1, 1);
+            }
+
+            if (interaction.customId === "voldown") {
+                player.volume = Math.max(player.volume - 0.1, 0);
+            }
+
+            await interaction.deferUpdate();
+
+        } catch (err) {
+            console.error("❌ Button Error:", err);
+        }
     }
 });
 

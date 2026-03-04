@@ -1,5 +1,5 @@
 module.exports = {
-    TOKEN: "YOUR_TOKEN",
+    TOKEN: process.env.TOKEN,
     EMBED_COLOR: 0x2f3136,
     BOT_NAME: "UltraMusic",
     FOOTER_TEXT: "UltraMusic • Premium Audio Experience",

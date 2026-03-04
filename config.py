@@ -1,6 +1,6 @@
 import os
 
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.environ["TOKEN"]
 
 EMBED_COLOR = 0x2f3136
 BOT_NAME = "UltraMusic"

@@ -22,12 +22,12 @@ class MusicPlayer {
         this.startTime = null;
         this.twentyFourSeven = false;
 
-        // ✅ Auto play next when song ends
+        // ✅ Auto play next
         this.player.on(AudioPlayerStatus.Idle, () => {
             this.playNext().catch(console.error);
         });
 
-        // ✅ Prevent crash on error
+        // ✅ Prevent crash
         this.player.on("error", (error) => {
             console.error("Audio Player Error:", error);
             this.playNext().catch(console.error);
@@ -50,7 +50,11 @@ class MusicPlayer {
     }
 
     async addSong(song) {
-        if (!song) return;
+        if (!song || !song.url) {
+            console.log("⚠ Invalid song skipped (no URL)");
+            return;
+        }
+
         this.queue.push(song);
     }
 
@@ -60,33 +64,32 @@ class MusicPlayer {
             if (this.current)
                 this.history.push(this.current);
 
-            // ✅ Loop song
             if (this.loopMode === "song" && this.current) {
-                // replay same song
-            } 
-            else {
+                // replay same
+            } else {
 
-                // ✅ Loop queue
                 if (this.loopMode === "queue" && this.current) {
                     this.queue.push(this.current);
                 }
 
                 if (this.queue.length > 0) {
                     this.current = this.queue.shift();
-                } 
-                else {
+                } else {
                     this.current = null;
 
                     if (!this.twentyFourSeven && this.connection) {
                         this.connection.destroy();
                         this.connection = null;
                     }
-
                     return;
                 }
             }
 
-            if (!this.current) return;
+            // ✅ SAFETY CHECK (IMPORTANT)
+            if (!this.current || !this.current.url) {
+                console.log("⚠ Skipping invalid song (no URL)");
+                return this.playNext();
+            }
 
             const stream = await play.stream(this.current.url);
 
@@ -103,7 +106,7 @@ class MusicPlayer {
 
         } catch (error) {
             console.error("PlayNext Error:", error);
-            this.playNext();
+            return this.playNext();
         }
     }
 

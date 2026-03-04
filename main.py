@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import yt_dlp
 import asyncio
+import os
 
 from config import TOKEN
 from player import MusicPlayer
@@ -18,10 +19,18 @@ tree = bot.tree
 players = {}
 now_playing_messages = {}
 
-ytdl = yt_dlp.YoutubeDL({
-    "format": "bestaudio/best",
-    "quiet": True
-})
+# ✅ UPDATED YTDL OPTIONS (YouTube Block Fix)
+ytdl_opts = {
+    "format": "bestaudio[ext=m4a]",
+    "quiet": True,
+    "noplaylist": True,
+    "nocheckcertificate": True,
+    "ignoreerrors": False,
+    "source_address": "0.0.0.0",
+    "extract_flat": False
+}
+
+ytdl = yt_dlp.YoutubeDL(ytdl_opts)
 
 
 def get_player(guild):
@@ -59,7 +68,7 @@ async def on_ready():
     if not update_embeds.is_running():
         update_embeds.start()
 
-    print(f"Logged in as {bot.user}")
+    print(f"✅ Logged in as {bot.user}")
 
 
 # ================= PLAY =================
@@ -75,13 +84,18 @@ async def play(interaction: discord.Interaction, query: str):
     player = get_player(interaction.guild)
     await player.connect(interaction.user.voice.channel)
 
-    info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
+    try:
+        info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
+    except Exception as e:
+        await interaction.followup.send("❌ Failed to fetch song from YouTube.")
+        print("YTDL ERROR:", e)
+        return
 
     song = {
         "title": info["title"],
         "url": info["url"],
         "duration": info.get("duration", 0),
-        "thumbnail": info.get("thumbnail")  # ✅ Thumbnail added
+        "thumbnail": info.get("thumbnail")
     }
 
     await player.add_song(song, interaction.followup)
@@ -102,7 +116,7 @@ async def play(interaction: discord.Interaction, query: str):
     now_playing_messages[interaction.guild.id] = message
 
 
-# ================= ADD NEXT (NEW COMMAND) =================
+# ================= ADD NEXT =================
 
 @tree.command(name="addnext", description="Add song to queue")
 async def addnext(interaction: discord.Interaction, query: str):
@@ -114,13 +128,18 @@ async def addnext(interaction: discord.Interaction, query: str):
 
     player = get_player(interaction.guild)
 
-    info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
+    try:
+        info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
+    except Exception as e:
+        await interaction.followup.send("❌ Failed to fetch song from YouTube.")
+        print("YTDL ERROR:", e)
+        return
 
     song = {
         "title": info["title"],
         "url": info["url"],
         "duration": info.get("duration", 0),
-        "thumbnail": info.get("thumbnail")  # ✅ Thumbnail added
+        "thumbnail": info.get("thumbnail")
     }
 
     await player.add_song(song, interaction.followup)

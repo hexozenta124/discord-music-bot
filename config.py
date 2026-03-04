@@ -1,6 +1,0 @@
-TOKEN = "MTQ3NzMzMTE5NTMwNTEzMjAzMg.GDCUl0.n1KN7ZpSZKceGUyEnquLxStQFOkvJtYcI6DmrE"
-
-EMBED_COLOR = 0x2f3136
-BOT_NAME = "UltraMusic"
-FOOTER_TEXT = "UltraMusic • Premium Audio Experience"
-DEFAULT_VOLUME = 0.7

@@ -99,4 +99,4 @@ async function deployCommands() {
     { body: commands }
   );
 
-  console.log("✅ Slash 
+  console.log("Slash Commands Deployed"); 

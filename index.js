@@ -28,7 +28,7 @@ const nodes = [
     name: "Railway",
     url: process.env.LAVALINK_URL,
     auth: process.env.LAVALINK_PASSWORD,
-    secure: false
+    secure: true
   }
 ];
 
